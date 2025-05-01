@@ -7,17 +7,16 @@ int main() {
     SetTargetFPS( 60 );
     SetExitKey( KEY_NULL );
 
-    Image img = LoadImageFromMemory(".png", TGUI_fontPng, sizeof(TGUI_fontPng));
-    Texture tex = LoadTextureFromImage(img);
-    UnloadImage(img);
+    TGUI_Initialize();
+
 
     while ( !WindowShouldClose() ) {
         BeginDrawing();
-            DrawTextureEx(tex, (Vector2){10.0f, 10.0f}, 0.0f, 3.0f, WHITE);
-
+            TGUI_DrawText("Hello World!", (Vector2){ 10.0f, 10.0f }, 2.0f, RED);
         EndDrawing();
     }
 
-    UnloadTexture(tex);
+    TGUI_Unload();
+
     CloseWindow();
 }

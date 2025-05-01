@@ -1,7 +1,19 @@
 #ifndef TGUI_H
 #define TGUI_H
 
+// Includes -------------------------------------------------------------------
+
+// Standard
+#include "string.h"
+
+// Raylib
 #include "raylib.h"
+
+
+// Defines --------------------------------------------------------------------
+#define TGUI_CHAR_WIDTH   5.0f
+#define TGUI_CHAR_HEIGHT  7.0f
+#define TGUI_CHAR_SPACING 1.0f
 
 // Raw font.png bytes
 const unsigned char TGUI_fontPng[] = {
@@ -77,5 +89,46 @@ const unsigned char TGUI_fontPng[] = {
     0xC6, 0x61, 0x3C, 0x4E, 0xEE, 0x0F, 0xF2, 0x27, 0x36, 0xBA, 0x65, 0xB8, 0x8B,
     0xD4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 };
+
+// State of TGUI
+struct {
+    Texture font;
+} tgui;
+
+// Initialize TGUI
+void TGUI_Initialize() {
+    // Initialize font
+    Image fontImage = LoadImageFromMemory( ".png", TGUI_fontPng, sizeof( TGUI_fontPng ) );
+    tgui.font = LoadTextureFromImage( fontImage );
+    UnloadImage( fontImage );
+}
+
+// Draws a single character
+void TGUI_DrawCharacter( char c, Vector2 pos, float size, Color color ) {
+    DrawTexturePro(
+        tgui.font,
+        (Rectangle){ (c-32)*TGUI_CHAR_WIDTH, 0.0f, TGUI_CHAR_WIDTH, TGUI_CHAR_HEIGHT },
+        (Rectangle){ pos.x, pos.y, TGUI_CHAR_WIDTH * size, TGUI_CHAR_HEIGHT * size },
+        (Vector2){0}, 0.0f, color
+    );
+}
+
+// Draws a string
+void TGUI_DrawText( const char *str, Vector2 pos, float size, Color color ) {
+    int length = strlen( str );
+    for ( int i = 0; i < length; i++ ) {
+        TGUI_DrawCharacter(
+            str[i],
+            (Vector2){ pos.x+i*(TGUI_CHAR_WIDTH+TGUI_CHAR_SPACING)*size, pos.y },
+            size, color
+        );
+    }
+}
+
+// Unload TGUI
+void TGUI_Unload() {
+
+    UnloadTexture( tgui.font );
+}
 
 #endif
