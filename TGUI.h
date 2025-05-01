@@ -14,6 +14,8 @@
 #define TGUI_CHAR_WIDTH   5.0f
 #define TGUI_CHAR_HEIGHT  7.0f
 #define TGUI_CHAR_SPACING 1.0f
+#define TGUI_FONT_SIZE    2.0f
+#define TGUI_FONT_COLOR   WHITE
 
 // Raw font.png bytes
 const unsigned char TGUI_fontPng[] = {
@@ -93,7 +95,11 @@ const unsigned char TGUI_fontPng[] = {
 // State of TGUI
 struct {
     Texture font;
+    float fontSize;
+    Color fontColor;
 } tgui;
+
+// Functions ------------------------------------------------------------------
 
 // Initialize TGUI
 void TGUI_Initialize() {
@@ -101,6 +107,9 @@ void TGUI_Initialize() {
     Image fontImage = LoadImageFromMemory( ".png", TGUI_fontPng, sizeof( TGUI_fontPng ) );
     tgui.font = LoadTextureFromImage( fontImage );
     UnloadImage( fontImage );
+
+    tgui.fontSize = TGUI_FONT_SIZE;
+    tgui.fontColor = TGUI_FONT_COLOR;
 }
 
 // Draws a single character
@@ -113,8 +122,8 @@ void TGUI_DrawCharacter( char c, Vector2 pos, float size, Color color ) {
     );
 }
 
-// Draws a string
-void TGUI_DrawText( const char *str, Vector2 pos, float size, Color color ) {
+// Draws a string with extra options
+void TGUI_DrawTextEx( const char *str, Vector2 pos, float size, Color color ) {
     int length = strlen( str );
     for ( int i = 0; i < length; i++ ) {
         TGUI_DrawCharacter(
@@ -123,6 +132,11 @@ void TGUI_DrawText( const char *str, Vector2 pos, float size, Color color ) {
             size, color
         );
     }
+}
+
+// Draws a string
+void TGUI_DrawText( const char *str, Vector2 pos ) {
+    TGUI_DrawTextEx( str, pos, tgui.fontSize, tgui.fontColor );
 }
 
 // Unload TGUI

@@ -12,7 +12,7 @@ int main() {
 
     while ( !WindowShouldClose() ) {
         BeginDrawing();
-            TGUI_DrawText("Hello World!", (Vector2){ 10.0f, 10.0f }, 2.0f, RED);
+            TGUI_DrawText("Hello World!", (Vector2){ 10.0f, 10.0f });
         EndDrawing();
     }
 
