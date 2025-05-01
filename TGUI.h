@@ -8,6 +8,20 @@
 
 // Raylib
 #include "raylib.h"
+#include "raymath.h"
+
+Rectangle InflateRectangle( Rectangle rec, float amount ) {
+    return (Rectangle){
+        rec.x      - amount,
+        rec.y      - amount,
+        rec.width  + amount * 2,
+        rec.height + amount * 2
+    };
+}
+
+Vector2 GetRectanglePos( Rectangle rec ) {
+    return (Vector2){ rec.x, rec.y };
+}
 
 // Thbop Library
 #include "list_t.h"
@@ -21,7 +35,7 @@
 #define TGUI_CHAR_WIDTH         5.0f
 #define TGUI_CHAR_HEIGHT        7.0f
 #define TGUI_CHAR_SPACING       1.0f
-#define TGUI_FONT_SIZE          2.0f
+#define TGUI_FONT_SIZE          1.0f
 #define TGUI_FONT_COLOR         TGUI_WHITE
 
 #define TGUI_TOOL_TITLE_SIZE    32
@@ -194,17 +208,51 @@ void TGUI_EndTool() {
 
 // Updates and draws a tool
 void TGUI_RunTool( TGUI_Tool *tool ) {
+    if ( tool->isGrabbed ) {
+        tool->rec.x = GetMouseX() + tool->grabOffset.x;
+        tool->rec.y = GetMouseY() + tool->grabOffset.y;
+    }
+
     DrawRectangleRec( tool->rec, TGUI_TOOL_COLOR );
+    TGUI_DrawText(
+        tool->title,
+        (Vector2){ tool->rec.x + 3, tool->rec.y + 3 }
+    );
 }
 
 // Updates and draws TGUI
 // Place this in your draw loop
 void TGUI_Run() {
+    Vector2 mousePos = GetMousePosition();
+
+    if (tgui.focusedTool != NULL) {
+        if (
+            IsMouseButtonDown( MOUSE_BUTTON_LEFT ) &&
+            !tgui.focusedTool->isGrabbed
+        ) {
+            tgui.focusedTool->isGrabbed  = true;
+            tgui.focusedTool->grabOffset = Vector2Subtract(
+                GetRectanglePos( tgui.focusedTool->rec ),
+                mousePos
+            );
+        }
+        else if ( IsMouseButtonUp( MOUSE_BUTTON_LEFT ) )
+            tgui.focusedTool->isGrabbed = false;
+    }
+    
+    tgui.focusedTool = NULL;
     list_foreach( tgui.tools, it ) {
         TGUI_Tool *tool = it->value;
+
+        if ( CheckCollisionPointRec( mousePos, tool->rec ) ) {
+            tgui.focusedTool = tool;
+            DrawRectangleLinesEx(
+                InflateRectangle( tool->rec, 1.0f ),
+                1.0f, TGUI_TOOL_FOCUSED_COLOR
+            );
+        }
         TGUI_RunTool( tool );
-        if ( tgui.focusedTool != NULL ) 
-            DrawRectangleLinesEx( tool->rec, 1.0f, TGUI_TOOL_FOCUSED_COLOR );
+        
     }
 }
 

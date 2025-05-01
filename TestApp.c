@@ -11,11 +11,16 @@ int main() {
 
     TGUI_BeginTool( (Vector2){ 10.0f, 10.0f }, "Test Tool" );
 
-    // TGUI_EndTool();
+    TGUI_EndTool();
+
+    TGUI_BeginTool( (Vector2){ 276.0f, 276.0f }, "Test Tool 2" );
+
+    TGUI_EndTool();
 
 
     while ( !WindowShouldClose() ) {
         BeginDrawing();
+            ClearBackground(BLACK);
             TGUI_Run();
         EndDrawing();
     }
