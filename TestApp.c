@@ -9,10 +9,14 @@ int main() {
 
     TGUI_Initialize();
 
+    TGUI_BeginTool( (Vector2){ 10.0f, 10.0f }, "Test Tool" );
+
+    // TGUI_EndTool();
+
 
     while ( !WindowShouldClose() ) {
         BeginDrawing();
-            TGUI_DrawText("Hello World!", (Vector2){ 10.0f, 10.0f });
+            TGUI_Run();
         EndDrawing();
     }
 

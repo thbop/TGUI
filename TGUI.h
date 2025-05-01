@@ -9,13 +9,25 @@
 // Raylib
 #include "raylib.h"
 
+// Thbop Library
+#include "list_t.h"
+
 
 // Defines --------------------------------------------------------------------
-#define TGUI_CHAR_WIDTH   5.0f
-#define TGUI_CHAR_HEIGHT  7.0f
-#define TGUI_CHAR_SPACING 1.0f
-#define TGUI_FONT_SIZE    2.0f
-#define TGUI_FONT_COLOR   WHITE
+#define TGUI_WHITE              (Color){ 240, 240, 240, 255 }
+#define TGUI_LIGHTBLUE          (Color){ 128, 250, 250, 255 }
+#define TGUI_DARKGRAY           (Color){  35,  35,  35, 255 }
+
+#define TGUI_CHAR_WIDTH         5.0f
+#define TGUI_CHAR_HEIGHT        7.0f
+#define TGUI_CHAR_SPACING       1.0f
+#define TGUI_FONT_SIZE          2.0f
+#define TGUI_FONT_COLOR         TGUI_WHITE
+
+#define TGUI_TOOL_TITLE_SIZE    32
+#define TGUI_TOOL_DEFAULT_SIZE  256
+#define TGUI_TOOL_COLOR         TGUI_DARKGRAY
+#define TGUI_TOOL_FOCUSED_COLOR TGUI_LIGHTBLUE
 
 // Raw font.png bytes
 const unsigned char TGUI_fontPng[] = {
@@ -92,11 +104,23 @@ const unsigned char TGUI_fontPng[] = {
     0xD4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 };
 
+// Tool panel
+typedef struct {
+    Rectangle rec;
+    char title[TGUI_TOOL_TITLE_SIZE];
+
+    bool isGrabbed;
+    Vector2 grabOffset;
+} TGUI_Tool;
+
 // State of TGUI
 struct {
     Texture font;
     float fontSize;
     Color fontColor;
+
+    list_t tools;
+    TGUI_Tool *focusedTool;
 } tgui;
 
 // Functions ------------------------------------------------------------------
@@ -110,6 +134,10 @@ void TGUI_Initialize() {
 
     tgui.fontSize = TGUI_FONT_SIZE;
     tgui.fontColor = TGUI_FONT_COLOR;
+
+    // Initialize tools
+    tgui.tools = new_list();
+    tgui.focusedTool = NULL;
 }
 
 // Draws a single character
@@ -139,9 +167,50 @@ void TGUI_DrawText( const char *str, Vector2 pos ) {
     TGUI_DrawTextEx( str, pos, tgui.fontSize, tgui.fontColor );
 }
 
+// Creates a new tool panel
+TGUI_Tool *TGUI_NewTool( Vector2 pos, const char *title ) {
+    TGUI_Tool tool = {
+        .rec        = (Rectangle){ pos.x, pos.y, TGUI_TOOL_DEFAULT_SIZE, TGUI_TOOL_DEFAULT_SIZE },
+        .isGrabbed  = false,
+        .grabOffset = (Vector2){0},
+    };
+    
+    // Copy the title over
+    strncpy(tool.title, title, TGUI_TOOL_TITLE_SIZE);
+    tool.title[TGUI_TOOL_TITLE_SIZE-1] = 0; // Ensure that the title is NULL terminated
+
+    return qalloc(tool);
+}
+
+// Begin building a new tool panel
+void TGUI_BeginTool( Vector2 pos, const char *title ) {
+    tgui.focusedTool = _list_append( &tgui.tools, TGUI_NewTool( pos, title ) );
+}
+
+// Stop building a tool panel
+void TGUI_EndTool() {
+    tgui.focusedTool = NULL;
+}
+
+// Updates and draws a tool
+void TGUI_RunTool( TGUI_Tool *tool ) {
+    DrawRectangleRec( tool->rec, TGUI_TOOL_COLOR );
+}
+
+// Updates and draws TGUI
+// Place this in your draw loop
+void TGUI_Run() {
+    list_foreach( tgui.tools, it ) {
+        TGUI_Tool *tool = it->value;
+        TGUI_RunTool( tool );
+        if ( tgui.focusedTool != NULL ) 
+            DrawRectangleLinesEx( tool->rec, 1.0f, TGUI_TOOL_FOCUSED_COLOR );
+    }
+}
+
 // Unload TGUI
 void TGUI_Unload() {
-
+    list_free( tgui.tools );
     UnloadTexture( tgui.font );
 }
 
