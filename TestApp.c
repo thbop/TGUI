@@ -22,6 +22,8 @@ int main() {
         BeginDrawing();
             ClearBackground(BLACK);
             TGUI_Run();
+            Rectangle textRec = TGUI_DrawTextEx( "Hello World!", (Vector2){ 500.0f, 500.0f }, 3.0f, TGUI_WHITE );
+            DrawRectangleLinesEx( InflateRectangle( textRec, 4.0f ), 2.0f, TGUI_LIGHTBLUE );
         EndDrawing();
     }
 

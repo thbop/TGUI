@@ -165,7 +165,8 @@ void TGUI_DrawCharacter( char c, Vector2 pos, float size, Color color ) {
 }
 
 // Draws a string with extra options
-void TGUI_DrawTextEx( const char *str, Vector2 pos, float size, Color color ) {
+// Returns the bounds of the text as a rectangle
+Rectangle TGUI_DrawTextEx( const char *str, Vector2 pos, float size, Color color ) {
     int length = strlen( str );
     for ( int i = 0; i < length; i++ ) {
         TGUI_DrawCharacter(
@@ -174,11 +175,17 @@ void TGUI_DrawTextEx( const char *str, Vector2 pos, float size, Color color ) {
             size, color
         );
     }
+    return (Rectangle){
+        pos.x, pos.y,
+        length*(TGUI_CHAR_WIDTH+TGUI_CHAR_SPACING)*size,
+        TGUI_CHAR_HEIGHT*size
+    };
 }
 
 // Draws a string
-void TGUI_DrawText( const char *str, Vector2 pos ) {
-    TGUI_DrawTextEx( str, pos, tgui.fontSize, tgui.fontColor );
+// Returns the bounds of the text as a rectangle
+Rectangle TGUI_DrawText( const char *str, Vector2 pos ) {
+    return TGUI_DrawTextEx( str, pos, tgui.fontSize, tgui.fontColor );
 }
 
 // Creates a new tool panel
