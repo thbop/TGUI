@@ -28,20 +28,25 @@ Vector2 GetRectanglePos( Rectangle rec ) {
 
 
 // Defines --------------------------------------------------------------------
-#define TGUI_WHITE              (Color){ 240, 240, 240, 255 }
-#define TGUI_LIGHTBLUE          (Color){ 128, 250, 250, 255 }
-#define TGUI_DARKGRAY           (Color){  35,  35,  35, 255 }
+#define TGUI_WHITE                 (Color){ 240, 240, 240, 255 }
+#define TGUI_LIGHTBLUE             (Color){ 128, 250, 250, 255 }
+#define TGUI_DARKBLUE              (Color){  70,  85,  85, 255 }
+#define TGUI_DARKGRAY              (Color){  35,  35,  35, 255 }
 
-#define TGUI_CHAR_WIDTH         5.0f
-#define TGUI_CHAR_HEIGHT        7.0f
-#define TGUI_CHAR_SPACING       1.0f
-#define TGUI_FONT_SIZE          1.0f
-#define TGUI_FONT_COLOR         TGUI_WHITE
+#define TGUI_CHAR_WIDTH            5.0f
+#define TGUI_CHAR_HEIGHT           7.0f
+#define TGUI_CHAR_SPACING          1.0f
+#define TGUI_FONT_SIZE             1.0f
+#define TGUI_FONT_COLOR            TGUI_WHITE
 
-#define TGUI_TOOL_TITLE_SIZE    32
-#define TGUI_TOOL_DEFAULT_SIZE  256
-#define TGUI_TOOL_COLOR         TGUI_DARKGRAY
-#define TGUI_TOOL_FOCUSED_COLOR TGUI_LIGHTBLUE
+#define TGUI_TOOL_TITLE_SIZE       32
+#define TGUI_TOOL_DEFAULT_SIZE     256
+#define TGUI_TOOL_MINIMIZED_HEIGHT 16
+#define TGUI_TOOL_COLOR            TGUI_DARKGRAY
+#define TGUI_TOOL_FOCUSED_COLOR    TGUI_LIGHTBLUE
+
+#define TGUI_BUTTON_COLOR          TGUI_DARKBLUE
+#define TGUI_BUTTON_HOVER_COLOR    TGUI_LIGHTBLUE
 
 // Raw font.png bytes
 const unsigned char TGUI_fontPng[] = {
@@ -123,7 +128,7 @@ typedef struct {
     Rectangle rec;
     char title[TGUI_TOOL_TITLE_SIZE];
 
-    bool isGrabbed;
+    bool isGrabbed, minimized;
     Vector2 grabOffset;
 } TGUI_Tool;
 
@@ -188,11 +193,28 @@ Rectangle TGUI_DrawText( const char *str, Vector2 pos ) {
     return TGUI_DrawTextEx( str, pos, tgui.fontSize, tgui.fontColor );
 }
 
+// Raw button. Returns true if clicked
+bool TGUI_ButtonEx( const char *str, Vector2 pos ) {
+    Rectangle rec = InflateRectangle(
+        TGUI_DrawText( str, pos ), 4.0f
+    );
+
+    DrawRectangleLinesEx( rec, 2.0f, TGUI_BUTTON_COLOR );
+
+    if ( CheckCollisionPointRec( GetMousePosition(), rec ) ) {
+        DrawRectangleLinesEx( rec, 2.0f, TGUI_BUTTON_HOVER_COLOR );
+        if ( IsMouseButtonPressed( MOUSE_BUTTON_LEFT ) )
+            return true;
+    }
+    return false;
+}
+
 // Creates a new tool panel
 TGUI_Tool *TGUI_NewTool( Vector2 pos, const char *title ) {
     TGUI_Tool tool = {
         .rec        = (Rectangle){ pos.x, pos.y, TGUI_TOOL_DEFAULT_SIZE, TGUI_TOOL_DEFAULT_SIZE },
         .isGrabbed  = false,
+        .minimized  = false,
         .grabOffset = (Vector2){0},
     };
     
@@ -225,6 +247,24 @@ void TGUI_RunTool( TGUI_Tool *tool ) {
         tool->title,
         (Vector2){ tool->rec.x + 3, tool->rec.y + 3 }
     );
+
+    // Minimize button
+    Vector2 minimizeButtonPos = {
+        tool->rec.x + TGUI_TOOL_DEFAULT_SIZE - 10.0f,
+        tool->rec.y + 4.0f,
+    };
+    char minimizeButtonSymbol[] = "-";
+    if ( tool->minimized ) {
+        minimizeButtonSymbol[0] = '+';
+        tool->rec.height = TGUI_TOOL_MINIMIZED_HEIGHT;
+    }
+    else
+        tool->rec.height = TGUI_TOOL_DEFAULT_SIZE;
+    
+    if ( TGUI_ButtonEx( minimizeButtonSymbol, minimizeButtonPos ) ) {
+        tool->minimized = !tool->minimized;
+    }
+
 }
 
 // Updates and draws TGUI
