@@ -84,14 +84,24 @@ l_node *_list_find(list_t *list, void *value) {
 void _list_remove(list_t *list, l_node *removed) {
     if ( removed == NULL ) return;
     
-    if (removed->prev == NULL && list->head == removed)
-        list->head = removed->next;
+    if ( removed->prev == NULL ) {
+        if ( removed->next == NULL )               // PREV = NEXT = NULL
+            list->head = NULL;
+        else {                                     // PREV = NULL; NEXT = PTR
+            list->head = removed->next;
+            list->head->prev = NULL;
+        }
+    }
     else {
-        l_node *prev = removed->prev;
-        l_node *next = removed->next;
+        if ( removed->next == NULL )               // PREV = PTR; NEXT = NULL
+            ((l_node*)removed->prev)->next = NULL;
+        else {                                     // PREV = PTR; NEXT = PTR
+            l_node *prev = removed->prev;
+            l_node *next = removed->next;
 
-        prev->next = next;
-        next->prev = prev;
+            prev->next = next;
+            next->prev = prev;
+        }
     }
     list->len--;
     free(removed);
