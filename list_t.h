@@ -45,7 +45,7 @@ void *_list_append(list_t *list, void *value) {
     n->next  = NULL;
 
     if (list->head == NULL)
-    list->head = n;
+        list->head = n;
     else {
         list->head->prev = n;
         n->next = list->head;
@@ -81,44 +81,65 @@ l_node *_list_find(list_t *list, void *value) {
 #define list_find(list, value_ptr) \
     _list_find(&list, value)
 
-void _list_remove(list_t *list, l_node *removed) {
-    if ( removed == NULL ) return;
+// Removes an element from the list, but does not free its value.
+// Instead, it returns the value
+void *_list_pop( list_t *list, l_node *popped ) {
+    if ( popped == NULL ) return NULL;
     
-    if ( removed->prev == NULL ) {
-        if ( removed->next == NULL )               // PREV = NEXT = NULL
+    if ( popped->prev == NULL ) {
+        if ( popped->next == NULL )               // PREV = NEXT = NULL
             list->head = NULL;
         else {                                     // PREV = NULL; NEXT = PTR
-            list->head = removed->next;
+            list->head = popped->next;
             list->head->prev = NULL;
         }
     }
     else {
-        if ( removed->next == NULL )               // PREV = PTR; NEXT = NULL
-            ((l_node*)removed->prev)->next = NULL;
+        if ( popped->next == NULL )               // PREV = PTR; NEXT = NULL
+            ((l_node*)popped->prev)->next = NULL;
         else {                                     // PREV = PTR; NEXT = PTR
-            l_node *prev = removed->prev;
-            l_node *next = removed->next;
+            l_node *prev = popped->prev;
+            l_node *next = popped->next;
 
             prev->next = next;
             next->prev = prev;
         }
     }
     list->len--;
-    free(removed);
+    void *value = popped->value;
+    free(popped);
+    return value;
+}
+
+void _list_remove(list_t *list, l_node *removed) {
+    void *value = _list_pop( list, removed );
+    if ( value != NULL )
+        free(value);
 }
 
 #define list_remove(list, item) \
     _list_remove(&list, item)
 
-void list_free(list_t list) {
-    l_node *node = list.head;
+// Frees the list, but not its elements
+void _list_disband( list_t *list ) {
+    l_node *node = list->head;
     l_node *n;
     while (node != NULL) {
         n = node->next;
-        free(node->value);
         free(node);
         node = n;
     }
+    *list = new_list();
 }
+
+void _list_free(list_t *list) {
+    list_ptr_foreach( list, it ) {
+        free( it->value );
+    }
+    _list_disband( list );
+}
+
+#define list_free( list ) \
+    _list_free( &list )
 
 #endif

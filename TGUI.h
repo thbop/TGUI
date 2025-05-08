@@ -45,6 +45,8 @@ Vector2 GetRectanglePos( Rectangle rec ) {
 #define TGUI_TOOL_COLOR            TGUI_DARKGRAY
 #define TGUI_TOOL_FOCUSED_COLOR    TGUI_LIGHTBLUE
 
+#define TGUI_BOX_COLOR             TGUI_DARKBLUE
+
 #define TGUI_BUTTON_COLOR          TGUI_DARKBLUE
 #define TGUI_BUTTON_HOVER_COLOR    TGUI_LIGHTBLUE
 
@@ -123,6 +125,20 @@ const unsigned char TGUI_fontPng[] = {
     0xD4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 };
 
+enum {
+    TGUI_BOX_ALIGN_HORIZONTAL,
+    TGUI_BOX_ALIGN_VERTICAL,
+};
+
+// Box - fundamental unit of gui
+typedef struct {
+    void *parent;     // Parent box
+    list_t children;  // Children boxes
+
+    Rectangle domain; // Local rectangular domain
+    int align;        // Children alignment
+} TGUI_Box;
+
 // Tool panel
 typedef struct {
     Rectangle rec;
@@ -130,16 +146,20 @@ typedef struct {
 
     bool isGrabbed, minimized;
     Vector2 grabOffset;
+
+    TGUI_Box *box;
 } TGUI_Tool;
 
 // State of TGUI
 struct {
-    Texture font;
-    float fontSize;
-    Color fontColor;
+    Texture font;           // Font texture
+    float fontSize;         // Font size
+    Color fontColor;        // Font color
 
-    list_t tools;
-    TGUI_Tool *focusedTool;
+    list_t tools;           // List of tool panels
+    TGUI_Tool *focusedTool; // The currently focused tool
+    
+    list_t focusedBoxes;    // Stack of currently focused boxes
 } tgui;
 
 // Functions ------------------------------------------------------------------
@@ -209,6 +229,90 @@ bool TGUI_ButtonEx( const char *str, Vector2 pos ) {
     return false;
 }
 
+// Creates a new box given a parent
+// Accepts NULL as a parent
+TGUI_Box *TGUI_NewBox( TGUI_Box *parent, Rectangle rec, int align ) {
+    TGUI_Box box = {
+        .parent   = parent,
+        .children = new_list(),
+        .domain   = rec,
+        .align    = align,
+    };
+    return qalloc( box );
+}
+
+// Adds a box to a parent box
+TGUI_Box *TGUI_AddBox( TGUI_Box *parent, int align ) {
+    if ( parent == NULL ) return NULL;
+
+    // Append new box
+    TGUI_Box *box = TGUI_NewBox( parent, parent->domain, align );
+    _list_append( &parent->children, box );
+
+    // Calculate spacing (based on alignment)
+    float
+        parentLength = parent->align ? parent->domain.height : parent->domain.width,
+        length       = roundf( parentLength / parent->children.len ),
+        x            = 0.0f;
+    
+    // Update sibling spacing
+    list_foreach( parent->children, it ) {
+        TGUI_Box *b = it->value;
+
+        b->domain = parent->domain; // Just to ensure everything is smooth
+
+        switch ( parent->align ) {
+            case TGUI_BOX_ALIGN_HORIZONTAL:
+                b->domain.x = x;
+                b->domain.width = length;
+                break;
+            case TGUI_BOX_ALIGN_VERTICAL:
+                b->domain.y = x;
+                b->domain.height = length;
+                break;
+        }
+        x += length;
+    }
+
+    // Return box
+    return box;
+}
+
+// Recursively runs all boxes
+void TGUI_RunBox( TGUI_Box *box, TGUI_Tool *tool ) {
+    // Calculate global domain
+    TGUI_Box *parent = box->parent;
+    Rectangle globalDomain = box->domain;
+
+    globalDomain.x += tool->rec.x;
+    globalDomain.y += tool->rec.y + TGUI_TOOL_MINIMIZED_HEIGHT;
+    if ( parent != NULL ) {
+        globalDomain.x += parent->domain.x;
+        globalDomain.y += parent->domain.y;
+    }
+
+    DrawRectangleLinesEx( globalDomain, 2.0f, TGUI_BOX_COLOR );
+
+    list_foreach( box->children, it ) {
+        TGUI_RunBox( it->value, tool );
+    }
+}
+
+// Recursively unloads a box and its children
+void TGUI_UnloadBox( TGUI_Box *box ) {
+    if ( box == NULL ) return;
+
+    list_foreach( box->children, it ) {
+        TGUI_UnloadBox( it->value );
+    }
+    list_free( box->children );
+
+    // list_free will deallocate all children boxes, thus the oldest parent
+    // must be freed manually.
+    if ( box->parent == NULL )
+        free( box );
+}
+
 // Creates a new tool panel
 TGUI_Tool *TGUI_NewTool( Vector2 pos, const char *title ) {
     TGUI_Tool tool = {
@@ -217,6 +321,17 @@ TGUI_Tool *TGUI_NewTool( Vector2 pos, const char *title ) {
         .minimized  = false,
         .grabOffset = (Vector2){0},
     };
+
+    // Add a new box
+    tool.box = TGUI_NewBox(
+        NULL,
+        (Rectangle){
+            0.0f, 0.0f,
+            tool.rec.width,
+            tool.rec.height - TGUI_TOOL_MINIMIZED_HEIGHT
+        },
+        TGUI_BOX_ALIGN_HORIZONTAL
+    ); 
     
     // Copy the title over
     strncpy(tool.title, title, TGUI_TOOL_TITLE_SIZE);
@@ -225,9 +340,23 @@ TGUI_Tool *TGUI_NewTool( Vector2 pos, const char *title ) {
     return qalloc(tool);
 }
 
+// Begin building a new box
+void TGUI_BeginBox( int align ) {
+    TGUI_Box *parent = tgui.focusedBoxes.head->value;
+    TGUI_Box *box = TGUI_AddBox( parent, align );
+    _list_append( &tgui.focusedBoxes, box );
+}
+
+// Stop building a new box
+void TGUI_EndBox() {
+    _list_pop( &tgui.focusedBoxes, tgui.focusedBoxes.head );
+}
+
 // Begin building a new tool panel
 void TGUI_BeginTool( Vector2 pos, const char *title ) {
     tgui.focusedTool = _list_append( &tgui.tools, TGUI_NewTool( pos, title ) );
+    _list_disband( &tgui.focusedBoxes );
+    _list_append( &tgui.focusedBoxes, tgui.focusedTool->box );
 }
 
 // Stop building a tool panel
@@ -258,9 +387,10 @@ void TGUI_RunTool( TGUI_Tool *tool ) {
         minimizeButtonSymbol[0] = '+';
         tool->rec.height = TGUI_TOOL_MINIMIZED_HEIGHT;
     }
-    else
+    else {
         tool->rec.height = TGUI_TOOL_DEFAULT_SIZE;
-    
+        TGUI_RunBox( tool->box, tool );
+    }
     if ( TGUI_ButtonEx( minimizeButtonSymbol, minimizeButtonPos ) ) {
         tool->minimized = !tool->minimized;
     }
@@ -305,6 +435,10 @@ void TGUI_Run() {
 
 // Unload TGUI
 void TGUI_Unload() {
+    list_foreach( tgui.tools, it ) {
+        TGUI_Tool *tool = it->value;
+        TGUI_UnloadBox( tool->box );
+    }
     list_free( tgui.tools );
     UnloadTexture( tgui.font );
 }

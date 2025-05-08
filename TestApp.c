@@ -10,7 +10,14 @@ int main() {
     TGUI_Initialize();
 
     TGUI_BeginTool( (Vector2){ 10.0f, 10.0f }, "Test Tool" );
-
+        TGUI_BeginBox( 0 );
+        TGUI_EndBox();
+        TGUI_BeginBox( 1 );
+            TGUI_BeginBox( 0 );
+            TGUI_EndBox();
+            TGUI_BeginBox( 0 );
+            TGUI_EndBox();
+        TGUI_EndBox();
     TGUI_EndTool();
 
     TGUI_BeginTool( (Vector2){ 276.0f, 276.0f }, "Test Tool 2" );
@@ -22,8 +29,6 @@ int main() {
         BeginDrawing();
             ClearBackground(BLACK);
             TGUI_Run();
-            Rectangle textRec = TGUI_DrawTextEx( "Hello World!", (Vector2){ 500.0f, 500.0f }, 3.0f, TGUI_WHITE );
-            DrawRectangleLinesEx( InflateRectangle( textRec, 4.0f ), 2.0f, TGUI_LIGHTBLUE );
         EndDrawing();
     }
 
